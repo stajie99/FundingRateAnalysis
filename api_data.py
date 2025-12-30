@@ -202,45 +202,45 @@ class FundingRateFetcher:
             
         return pd.DataFrame()
 
-    def fetch_multiple_exchanges(self, symbol_mapping: Dict[str, str], 
-                                 limit_per_exchange: int = 50) -> Dict[str, pd.DataFrame]:
-        """
-        Fetch funding rates from multiple exchanges for comparable symbols
+    # def fetch_multiple_exchanges(self, symbol_mapping: Dict[str, str], 
+    #                              limit_per_exchange: int = 50) -> Dict[str, pd.DataFrame]:
+    #     """
+    #     Fetch funding rates from multiple exchanges for comparable symbols
         
-        Args:
-            symbol_mapping: Dict with exchange names as keys and symbols as values
-                           Example: {'binance': 'BTCUSDT', 'bitmex': 'XBTUSD'}
-            limit_per_exchange: Number of records per exchange
+    #     Args:
+    #         symbol_mapping: Dict with exchange names as keys and symbols as values
+    #                        Example: {'binance': 'BTCUSDT', 'bitmex': 'XBTUSD'}
+    #         limit_per_exchange: Number of records per exchange
         
-        Returns:
-            Dictionary with exchange names as keys and DataFrames as values
-        """
-        results = {}
+    #     Returns:
+    #         Dictionary with exchange names as keys and DataFrames as values
+    #     """
+    #     results = {}
         
-        for exchange, symbol in symbol_mapping.items():
-            print(f"Fetching from {exchange} for {symbol}...")
+    #     for exchange, symbol in symbol_mapping.items():
+    #         print(f"Fetching from {exchange} for {symbol}...")
             
-            if exchange.lower() == 'apollox':
-                df = self.fetch_apollox(symbol, limit_per_exchange)
-                results['apollox'] = df
+    #         if exchange.lower() == 'apollox':
+    #             df = self.fetch_apollox(symbol, limit_per_exchange)
+    #             results['apollox'] = df
                 
-            elif exchange.lower() == 'binance':
-                df = self.fetch_binance(symbol, limit_per_exchange)
-                results['binance'] = df
+    #         elif exchange.lower() == 'binance':
+    #             df = self.fetch_binance(symbol, limit_per_exchange)
+    #             results['binance'] = df
                 
-            elif exchange.lower() == 'bitmex':
-                df = self.fetch_bitmex(symbol, limit_per_exchange)
-                results['bitmex'] = df
+    #         elif exchange.lower() == 'bitmex':
+    #             df = self.fetch_bitmex(symbol, limit_per_exchange)
+    #             results['bitmex'] = df
                 
-            elif exchange.lower() == 'drift':
-                # For Drift, we need a date - using today
-                today = datetime.now().strftime('%Y%m%d')
-                df = self.fetch_drift_s3(symbol, today)
-                results['drift'] = df
+    #         elif exchange.lower() == 'drift':
+    #             # For Drift, we need a date - using today
+    #             today = datetime.now().strftime('%Y%m%d')
+    #             df = self.fetch_drift_s3(symbol, today)
+    #             results['drift'] = df
             
-            time.sleep(0.5)  # Rate limiting
+    #         time.sleep(0.5)  # Rate limiting
         
-        return results
+    #     return results
 
 # ==================== USAGE EXAMPLES ====================
 
@@ -285,23 +285,23 @@ def example_basic_usage():
     print("EXAMPLE 4: Fetch from all exchanges for BTC")
     print("=" * 60)
     
-    # Fetch from multiple exchanges
-    symbol_map = {
-        'binance': 'BTCUSDT',
-        'apollox': 'BTCUSDT',
-        'bitmex': 'XBTUSD'
-    }
+    # # Fetch from multiple exchanges
+    # symbol_map = {
+    #     'binance': 'BTCUSDT',
+    #     'apollox': 'BTCUSDT',
+    #     'bitmex': 'XBTUSD'
+    # }
     
-    all_data = fetcher.fetch_multiple_exchanges(symbol_map, limit_per_exchange=5)
+    # all_data = fetcher.fetch_multiple_exchanges(symbol_map, limit_per_exchange=5)
     
-    for exchange, df in all_data.items():
-        if not df.empty:
-            print(f"\n{exchange.upper()} Data Shape: {df.shape}")
-            print(f"Columns: {list(df.columns)}")
-            if len(df) > 0:
-                print(f"Latest funding rate: {df.iloc[0]['fundingRate'] if 'fundingRate' in df.columns else 'N/A'}")
-        else:
-            print(f"\nNo data retrieved from {exchange}")
+    # for exchange, df in all_data.items():
+    #     if not df.empty:
+    #         print(f"\n{exchange.upper()} Data Shape: {df.shape}")
+    #         print(f"Columns: {list(df.columns)}")
+    #         if len(df) > 0:
+    #             print(f"Latest funding rate: {df.iloc[0]['fundingRate'] if 'fundingRate' in df.columns else 'N/A'}")
+    #     else:
+    #         print(f"\nNo data retrieved from {exchange}")
 
 def example_advanced_usage():
     """Advanced usage with time ranges and data analysis"""
@@ -312,36 +312,71 @@ def example_advanced_usage():
     print("=" * 60)
     
     # Calculate timestamps for last 7 days
-    end_time = int(time.time() * 1000)  # Current time in milliseconds
-    start_time = end_time - (7 * 24 * 60 * 60 * 1000)  # 7 days ago
+    end_time = int(datetime(2024, 2, 29).timestamp() * 1000)
+    # end_time = int(time.time() * 1000)  # Current time in milliseconds
+    # start_time = end_time - (7 * 24 * 60 * 60 * 1000)  # 7 days ago
+    start_time = int(datetime(2023, 8, 1).timestamp() * 1000)
     
-    eth_data = fetcher.fetch_binance(
-        symbol='ETHUSDT',
-        limit=100,
+    btc_data = fetcher.fetch_binance(
+        symbol='BTCUSDT',
+        limit=5000,
         start_time=start_time,
         end_time=end_time
     )
     
-    if not eth_data.empty:
-        print(f"\nRetrieved {len(eth_data)} ETH funding rate records")
+    if not btc_data.empty:
+        print(f"\nRetrieved {len(btc_data)} BTC funding rate records")
         
         # Basic analysis
-        eth_data['fundingRate_pct'] = eth_data['fundingRate'] * 100  # Convert to percentage
+        btc_data['fundingRate_pct'] = btc_data['fundingRate'] * 100  # Convert to percentage
         
-        print(f"\nETH Funding Rate Statistics (last 7 days):")
-        print(f"Average: {eth_data['fundingRate_pct'].mean():.4f}%")
-        print(f"Maximum: {eth_data['fundingRate_pct'].max():.4f}%")
-        print(f"Minimum: {eth_data['fundingRate_pct'].min():.4f}%")
-        print(f"Std Dev: {eth_data['fundingRate_pct'].std():.4f}%")
+        print(f"\nBTC Funding Rate Statistics (last 7 days):")
+        print(f"Average: {btc_data['fundingRate_pct'].mean():.4f}%")
+        print(f"Maximum: {btc_data['fundingRate_pct'].max():.4f}%")
+        print(f"Minimum: {btc_data['fundingRate_pct'].min():.4f}%")
+        print(f"Std Dev: {btc_data['fundingRate_pct'].std():.4f}%")
         
         # Count positive vs negative rates
-        positive = (eth_data['fundingRate'] > 0).sum()
-        negative = (eth_data['fundingRate'] < 0).sum()
+        positive = (btc_data['fundingRate'] > 0).sum()
+        negative = (btc_data['fundingRate'] < 0).sum()
         print(f"\nPositive rates: {positive}, Negative rates: {negative}")
         
         # Save to CSV
-        eth_data.to_csv('eth_funding_rates_7days.csv', index=False)
-        print("\nData saved to 'eth_funding_rates_7days.csv'")
+        btc_data.to_csv('binance_btc_funding_rates_2023_2024.csv', index=False)
+        print("\nData saved to 'binance_btc_funding_rates_2023_2024.csv'")
+
+    print("=" * 60)
+    print("ADVANCED: Fetch Bitmex data with time range")
+    print("=" * 60)
+
+    # Get Bitmex data with optional start time
+    
+    btc_data = fetcher.fetch_bitmex(
+        symbol='XBTUSD', 
+        count=500,
+        start_time = '2023-08-01T00:00:00.000Z',  # Optional: specify start time 
+        reverse=True)
+    
+    if not btc_data.empty:
+        print(f"\nRetrieved {len(btc_data)} BTC funding rate records")
+        
+        # Basic analysis
+        btc_data['fundingRate_pct'] = btc_data['fundingRate'] * 100  # Convert to percentage
+        
+        print(f"\nBTC Funding Rate Statistics (last 7 days):")
+        print(f"Average: {btc_data['fundingRate_pct'].mean():.4f}%")
+        print(f"Maximum: {btc_data['fundingRate_pct'].max():.4f}%")
+        print(f"Minimum: {btc_data['fundingRate_pct'].min():.4f}%")
+        print(f"Std Dev: {btc_data['fundingRate_pct'].std():.4f}%")
+        
+        # Count positive vs negative rates
+        positive = (btc_data['fundingRate'] > 0).sum()
+        negative = (btc_data['fundingRate'] < 0).sum()
+        print(f"\nPositive rates: {positive}, Negative rates: {negative}")
+        
+        # Save to CSV
+        btc_data.to_csv('bitmex_btc_funding_rates_2023_2024.csv', index=False)
+        print("\nData saved to 'bitmex_btc_funding_rates_2023_2024.csv'")
 
 def test_drift_access():
     """Test function to try accessing Drift data"""
@@ -383,13 +418,10 @@ if __name__ == "__main__":
     # Uncomment the examples you want to run:
     
     # Example 1: Basic usage
-    example_basic_usage()
+    # example_basic_usage()
     
     # Example 2: Advanced usage with time range
-    # example_advanced_usage()
+    example_advanced_usage()
     
     # Example 3: Test Drift access (likely won't work without correct setup)
     # test_drift_access()
-    
-    print("\n" + "=" * 60)
-    print("Execution completed!")
