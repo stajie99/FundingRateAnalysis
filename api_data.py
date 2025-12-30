@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime
 import time
 from typing import Optional, Dict, List
+import io
 
 class FundingRateFetcher:
     def __init__(self):
@@ -11,14 +12,17 @@ class FundingRateFetcher:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         })
     
-    def fetch_apollox(self, symbol: Optional[str] = None, limit: int = 100) -> pd.DataFrame:
+    def fetch_apollox(self, symbol: Optional[str] = None, limit: int = 100
+                      , start_time: Optional[int] = None) -> pd.DataFrame:
         """
         Fetch funding rate from ApolloX
         
         Args:
             symbol: Trading pair symbol (e.g., 'BTCUSDT')
             limit: Number of records to return (max 1000)
-            
+            start_time: Start time in milliseconds (timestamp). 
+                    If None, fetches most recent funding rates.
+                    
         Returns:
             DataFrame with funding rate data
         """
@@ -27,9 +31,16 @@ class FundingRateFetcher:
         
         if symbol:
             params['symbol'] = symbol
-        if limit:
-            params['limit'] = min(limit, 1000)  # API likely has a max limit
-            
+        
+        # Set startTime if provided
+        if start_time is not None:
+            params['startTime'] = start_time
+        
+        # Only add limit if no start_time is provided, or if limit is specified
+        # (When start_time is provided, API returns from that time forward, limited by count)
+        if limit and (start_time is not None or limit != 100):
+            params['limit'] = min(limit, 1000)  # API likely has a max limit of 1000
+        
         try:
             response = self.session.get(url, params=params, timeout=10)
             response.raise_for_status()
@@ -41,6 +52,11 @@ class FundingRateFetcher:
                 if 'fundingTime' in df.columns:
                     df['fundingTime_dt'] = pd.to_datetime(df['fundingTime'], unit='ms')
                     df['fundingRate'] = pd.to_numeric(df['fundingRate'], errors='coerce')
+                
+                # Filter by start_time if needed (in case API returns more data)
+                if start_time is not None and 'fundingTime' in df.columns:
+                    df = df[df['fundingTime'] >= start_time].copy()
+                
                 return df
             return pd.DataFrame()
             
@@ -181,14 +197,10 @@ class FundingRateFetcher:
             
             if response.status_code == 200:
                 try:
-                    data = response.json()
-                    if isinstance(data, list):
-                        df = pd.DataFrame(data)
-                        return df
-                    else:
-                        print(f"Unexpected response format from Drift S3")
-                        # Try to parse as CSV or other format
-                        print(f"Response preview: {response.text[:200]}")
+                    # Method 1: Parse CSV using pandas
+                    csv_data = response.text
+                    df = pd.read_csv(io.StringIO(csv_data))
+                    return df
                 except ValueError:
                     # Response might not be JSON
                     print(f"Response is not JSON. Content type: {response.headers.get('Content-Type')}")
@@ -345,6 +357,10 @@ def example_advanced_usage():
         btc_data.to_csv('binance_btc_funding_rates_2023_2024.csv', index=False)
         print("\nData saved to 'binance_btc_funding_rates_2023_2024.csv'")
 
+
+
+
+
     print("=" * 60)
     print("ADVANCED: Fetch Bitmex data with time range")
     print("=" * 60)
@@ -377,6 +393,73 @@ def example_advanced_usage():
         # Save to CSV
         btc_data.to_csv('bitmex_btc_funding_rates_2023_2024.csv', index=False)
         print("\nData saved to 'bitmex_btc_funding_rates_2023_2024.csv'")
+
+
+    print("=" * 60)
+    print("ADVANCED: Fetch ApolloX data with time range")
+    print("=" * 60)
+
+    # Get ApolloX data for same symbol
+    btc_data = fetcher.fetch_apollox(
+        symbol='BTCUSDT', 
+        limit=500,
+        start_time = int(datetime(2023, 8, 1).timestamp() * 1000))
+    
+    if not btc_data.empty:
+        print(f"\nRetrieved {len(btc_data)} BTC funding rate records")
+        
+        # Basic analysis
+        btc_data['fundingRate_pct'] = btc_data['fundingRate'] * 100  # Convert to percentage
+        
+        print(f"\nBTC Funding Rate Statistics (last 7 days):")
+        print(f"Average: {btc_data['fundingRate_pct'].mean():.4f}%")
+        print(f"Maximum: {btc_data['fundingRate_pct'].max():.4f}%")
+        print(f"Minimum: {btc_data['fundingRate_pct'].min():.4f}%")
+        print(f"Std Dev: {btc_data['fundingRate_pct'].std():.4f}%")
+        
+        # Count positive vs negative rates
+        positive = (btc_data['fundingRate'] > 0).sum()
+        negative = (btc_data['fundingRate'] < 0).sum()
+        print(f"\nPositive rates: {positive}, Negative rates: {negative}")
+        
+        # Save to CSV
+        btc_data.to_csv('apollox_btc_funding_rates_2023_2024.csv', index=False)
+        print("\nData saved to 'apollox_btc_funding_rates_2023_2024.csv'")
+
+
+
+
+    print("=" * 60)
+    print("ADVANCED: Fetch Drift data with time range")
+    print("=" * 60)
+    
+    btc_data = fetcher.fetch_drift_s3(
+        symbol='BTC-PERP',  
+        date='20230801')
+    
+    if not btc_data.empty:
+        print(f"\nRetrieved {len(btc_data)} BTC funding rate records")
+        
+        # Basic analysis
+        btc_data['fundingRate_pct'] = btc_data['fundingRate'] * 100  # Convert to percentage
+        
+        print(f"\nBTC Funding Rate Statistics (last 7 days):")
+        print(f"Average: {btc_data['fundingRate_pct'].mean():.4f}%")
+        print(f"Maximum: {btc_data['fundingRate_pct'].max():.4f}%")
+        print(f"Minimum: {btc_data['fundingRate_pct'].min():.4f}%")
+        print(f"Std Dev: {btc_data['fundingRate_pct'].std():.4f}%")
+        
+        # Count positive vs negative rates
+        positive = (btc_data['fundingRate'] > 0).sum()
+        negative = (btc_data['fundingRate'] < 0).sum()
+        print(f"\nPositive rates: {positive}, Negative rates: {negative}")
+        
+        # Save to CSV
+        btc_data.to_csv('drift_btc_funding_rates_2023_2024.csv', index=False)
+        print("\nData saved to 'drift_btc_funding_rates_2023_2024.csv'")
+
+
+
 
 def test_drift_access():
     """Test function to try accessing Drift data"""
@@ -412,8 +495,9 @@ def test_drift_access():
 # ==================== MAIN EXECUTION ====================
 
 if __name__ == "__main__":
-    print("Funding Rate Data Fetcher")
+    
     print("=" * 60)
+    print("Funding Rate Data Fetcher")
     
     # Uncomment the examples you want to run:
     
