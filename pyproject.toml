@@ -17,6 +17,7 @@ gql = "^3.4.1"
 setuptools = "^68.2.2"
 seaborn = "^0.13.2"
 adjusttext = "^1.0.4"
+modules = "^1.0.0"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.26.0"
