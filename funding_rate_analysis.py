@@ -14,8 +14,8 @@
 # # # Create virtual environment and install dependencies
 # # poetry install
 
+################ do not run below
 # # Create virtual environment
-
 # python -m venv venv
 
 # # Activate it
