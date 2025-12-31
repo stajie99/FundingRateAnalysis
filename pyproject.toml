@@ -1,0 +1,17 @@
+[project]
+name = "funding-rate-analysis"
+version = "Y"
+description = "my funding-rate-analysis following github repo and the paper Explore Risk and Return Profiles of Funding Rate Arbitrage on CEX and DEX"
+authors = [
+    {name = "Y"}
+]
+license = {text = "Y"}
+readme = "README.md"
+requires-python = "Y"
+dependencies = [
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
