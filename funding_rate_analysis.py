@@ -1,0 +1,2 @@
+# pip install poetry
+# Poetry helps you declare, manage and install dependencies of Python projects, ensuring you have the right stack everywhere.
