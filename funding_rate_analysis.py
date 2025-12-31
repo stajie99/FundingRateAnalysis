@@ -1,22 +1,25 @@
-pip install poetry
-# Verify poetry installation
-poetry --version
-# Poetry helps you declare, manage and install dependencies of Python projects, ensuring you have the right stack everywhere.
+############### Create python virtual environment as https://github.com/stajie99/funding-rate-arb-analysis/tree/main
 
-# # Configure poetry to create virtual environments in your project folder
-# poetry config virtualenvs.in-project true
+# pip install poetry
+# # Verify poetry installation
+# poetry --version
+# # Poetry helps you declare, manage and install dependencies of Python projects, ensuring you have the right stack everywhere.
 
-# # Initialize poetry
-# poetry init
+# # # Configure poetry to create virtual environments in your project folder
+# # poetry config virtualenvs.in-project true
 
-# # Create virtual environment and install dependencies
-# poetry install
+# # # Initialize poetry
+# # poetry init
 
-# Create virtual environment
-python -m venv venv
+# # # Create virtual environment and install dependencies
+# # poetry install
 
-# Activate it
-venv\Scripts\activate.bat
+# # Create virtual environment
 
-# To deactivate
-deactivate
+# python -m venv venv
+
+# # Activate it
+# venv\Scripts\activate.bat
+
+# # To deactivate
+# deactivate

@@ -1,17 +1,27 @@
-[project]
+[tool.poetry]
 name = "funding-rate-analysis"
-version = "Y"
+version = "0.1.0"
 description = "my funding-rate-analysis following github repo and the paper Explore Risk and Return Profiles of Funding Rate Arbitrage on CEX and DEX"
-authors = [
-    {name = "Y"}
-]
-license = {text = "Y"}
+authors = ["SainyTK <tanakorn0412@gmail.com>"]
 readme = "README.md"
-requires-python = "Y"
-dependencies = [
-]
+packages = [{include = "funding_backtest"}]
 
+[tool.poetry.dependencies]
+python = "^3.10"
+pandas = "^2.1.3"
+matplotlib = "^3.8.2"
+requests = "^2.31.0"
+web3 = "^6.11.3"
+python-dotenv = "^1.0.0"
+gql = "^3.4.1"
+setuptools = "^68.2.2"
+seaborn = "^0.13.2"
+adjusttext = "^1.0.4"
+
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.26.0"
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
+requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
