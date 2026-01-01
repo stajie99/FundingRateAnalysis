@@ -46,16 +46,19 @@ def fetch_24h_vol(exchange, market):
 
 # Util functions for calculating pnl (long spot, short future)
 def get_backtest_result(input_df, l, fee = 0.001, maintenance_margin = 0.05, stop_loss_margin = 0.0625):
-    """
-    Docstring for get_backtest_result
-    
-    :param input_df: Description
-    :param l: Description
-    :param fee: Description
+    """   
+    Simulates trades based on historical data points.
+
+    :param input_df: contains historical price and funding rate data
+    :param l: 
+    :param fee: 
     :param maintenance_margin: The minimum equity percentage required to keep a position open. 
                                 If equity falls below this, you get a margin call
     :param stop_loss_margin: A higher threshold than maintenance margin where a stop-loss triggers,
                                 acting as a safety buffer before liquidation
+
+    Output: 
+        Calculates what would have happened if you traded this strategy in the past
 
     - This is a risk-averse simulation (assumes worst-case for change P&L)
     - Two-level risk management: Stop-loss (preventive) and Liquidation (forced)
@@ -79,7 +82,6 @@ def get_backtest_result(input_df, l, fee = 0.001, maintenance_margin = 0.05, sto
 
             # Below margin requirements calculation is to help traders understand their risk exposure for 
             # their trading positions, specifically in the context of leveraged trading (like futures or margin trading).
-
             # 1. Minimum equity needed to avoid liquidation
             df['mm'] = df['clt'] * df['leverage'] * maintenance_margin 
             # 2. Equity level where stop-loss triggers
@@ -121,7 +123,7 @@ def get_backtest_result(input_df, l, fee = 0.001, maintenance_margin = 0.05, sto
                 funding_rate = float(df.loc[index, 'funding_rate'])
 
                 df.loc[index, 'clt'] = max(new_clt, float(0))
-                # A. Position Entry & Size
+                # A. Position Entry & Size simulating. Simulates how much you would have traded at each point
                     # Entry price of the current position: Resets on trade, otherwise carries forward
                 df.loc[index, 'entry'] = price if traded else prev_df['entry']
                     # Size of the current position: Current notional value = Price × Capital × Leverage
@@ -131,7 +133,7 @@ def get_backtest_result(input_df, l, fee = 0.001, maintenance_margin = 0.05, sto
                 df.loc[index, 'change'] = (price - df.loc[index, 'entry']) / df.loc[index, 'entry'] if df.loc[index, 'entry'] != 0 else 0
                     # Change pnl (we treat any changes as loss since we will either close the short position or long position if the price hits the stop loss)
                 df.loc[index, 'change_pnl'] = -abs(df.loc[index, 'change'] * df.loc[index, 'leverage'])
-                # C. Funding Payments
+                # C. Funding Payments : accounts for perpetual futures funding payments - Realistic simulation of holding costs
                     # Funding payment comes from the funding rate and the position size (collateral + change pnl)
                 df.loc[index, 'funding'] = (df.loc[index, 'clt'] - df.loc[index, 'change'] / 2) * funding_rate * df.loc[index, 'leverage'] / 2
                     # Funding pnl is accumulated while there is no trading. If there is a trade, we reset the funding pnl and set it to the current funding payment
