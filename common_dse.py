@@ -46,11 +46,29 @@ def fetch_24h_vol(exchange, market):
 
 # Util functions for calculating pnl (long spot, short future)
 def get_backtest_result(input_df, l, fee = 0.001, maintenance_margin = 0.05, stop_loss_margin = 0.0625):
+    """
+    Docstring for get_backtest_result
+    
+    :param input_df: Description
+    :param l: Description
+    :param fee: Description
+    :param maintenance_margin: The minimum equity percentage required to keep a position open. 
+                                If equity falls below this, you get a margin call
+    :param stop_loss_margin: A higher threshold than maintenance margin where a stop-loss triggers,
+                                acting as a safety buffer before liquidation
+
+    - This is a risk-averse simulation (assumes worst-case for change P&L)
+    - Two-level risk management: Stop-loss (preventive) and Liquidation (forced)
+    - Funding rates matter: Can significantly impact P&L in perpetual contracts
+    - Fees only on exits: Assumes no trading fees except liquidation/stop-loss
+    """
+    
     df = input_df.copy()
     for index, row in enumerate(df.iterrows()):
         if index == 0:
-            df['clt'] = float(1)
-            df['leverage'] = l
+            df['clt'] = float(1)  # The total capital/equity available in the account, normalized to 1
+            df['leverage'] = l    # Leverage Multiplier: How many times your capital is being multiplied (e.g., 10x leverage)
+                                  # Example: With $1000 capital and 10x leverage, you control $10,000 position
             df['entry'] = float(0)
             df['pos_size'] = float(0)
             df['change'] = float(0)
@@ -59,15 +77,21 @@ def get_backtest_result(input_df, l, fee = 0.001, maintenance_margin = 0.05, sto
             df['funding_pnl'] = float(0)
             df['margin'] = float(0)
 
-            df['mm'] = df['clt'] * df['leverage'] * maintenance_margin
-            df['mm_sl'] = df['clt'] * df['leverage'] * stop_loss_margin
+            # Below margin requirements calculation is to help traders understand their risk exposure for 
+            # their trading positions, specifically in the context of leveraged trading (like futures or margin trading).
 
-            df['is_liq'] = False
+            # 1. Minimum equity needed to avoid liquidation
+            df['mm'] = df['clt'] * df['leverage'] * maintenance_margin 
+            # 2. Equity level where stop-loss triggers
+            df['mm_sl'] = df['clt'] * df['leverage'] * stop_loss_margin  
+                                                                          
             df['is_sl'] = False
 
             df['fee'] = -fee * df['leverage']
             df['final_pnl'] = float(0)
         else:
+            ### Below is a trading simulation/backtesting logic (a leveraged trading strategy) that tracks 
+            # positions, margin requirements, and calculates P&L
             prev_df = df.loc[index - 1]
             # check if is there was a trade in the previous record
             traded = prev_df['fee'] != 0
@@ -75,7 +99,8 @@ def get_backtest_result(input_df, l, fee = 0.001, maintenance_margin = 0.05, sto
             # calculate new clt from previous clt + fee + funding pnl (if traded)
             new_clt = prev_df['clt'] + prev_df['fee'] + (prev_df['funding_pnl'] if traded else 0)
 
-            if new_clt == 0:
+            if new_clt == 0:  
+                # If capital goes to zero, reset everything - no capital means no trading possible
                 df.loc[index, 'clt'] = float(0)
                 df.loc[index, 'entry'] = float(0)
                 df.loc[index, 'pos_size'] = float(0)
@@ -89,40 +114,46 @@ def get_backtest_result(input_df, l, fee = 0.001, maintenance_margin = 0.05, sto
                 df.loc[index, 'is_liq'] = False
                 df.loc[index, 'is_sl'] = False
                 df.loc[index, 'fee'] = float(0)
-                df.loc[index, 'final_pnl'] = -1
-            else:
+                df.loc[index, 'final_pnl'] = -1  # 100% loss of initial capital
+            else:  
+                # Active Position Calculations
                 price = float(df.loc[index, 'close'])
                 funding_rate = float(df.loc[index, 'funding_rate'])
 
                 df.loc[index, 'clt'] = max(new_clt, float(0))
-                # Entry price of the current position
+                # A. Position Entry & Size
+                    # Entry price of the current position: Resets on trade, otherwise carries forward
                 df.loc[index, 'entry'] = price if traded else prev_df['entry']
-                # Size of the current position
+                    # Size of the current position: Current notional value = Price × Capital × Leverage
                 df.loc[index, 'pos_size'] = price * df.loc[index, 'clt'] * df.loc[index, 'leverage']
-                # Change of the current position (compared to entry price)
+                # B. Price Change P&L
+                    # Change (%) of the current position (compared to entry price)
                 df.loc[index, 'change'] = (price - df.loc[index, 'entry']) / df.loc[index, 'entry'] if df.loc[index, 'entry'] != 0 else 0
-                # Change pnl (we treat any changes as loss since we will either close the short position or long position if the price hits the stop loss)
+                    # Change pnl (we treat any changes as loss since we will either close the short position or long position if the price hits the stop loss)
                 df.loc[index, 'change_pnl'] = -abs(df.loc[index, 'change'] * df.loc[index, 'leverage'])
-                # Funding payment comes from the funding rate and the position size (collateral + change pnl)
+                # C. Funding Payments
+                    # Funding payment comes from the funding rate and the position size (collateral + change pnl)
                 df.loc[index, 'funding'] = (df.loc[index, 'clt'] - df.loc[index, 'change'] / 2) * funding_rate * df.loc[index, 'leverage'] / 2
-                # Funding pnl is accumulated while there is no trading. If there is a trade, we reset the funding pnl and set it to the current funding payment
+                    # Funding pnl is accumulated while there is no trading. If there is a trade, we reset the funding pnl and set it to the current funding payment
                 df.loc[index, 'funding_pnl'] = df.loc[index, 'funding'] if traded else df.loc[index, 'funding'] + df.loc[index - 1, 'funding_pnl']
-                # Calculate current margin to check stop loss and liquidation
+                # D. Margin Calculation
+                    # Calculate current margin to check stop loss and liquidation
+                    # Margin ratio = (Current equity) / (Initial collateral) = (Capital + Change P&L + Funding P&L) / (Initial collateral)
                 df.loc[index, 'margin'] = (df.loc[index, 'clt'] + df.loc[index, 'change_pnl'] + df.loc[index, 'funding_pnl']) / df.loc[index, 'clt'] if df.loc[index, 'clt'] != 0 else 0
 
                 # Calculate maintenance margin for liquidation
                 df.loc[index, 'mm'] = df.loc[index, 'clt'] * df.loc[index, 'leverage'] * maintenance_margin
                 # Calculate maintenance margin for stop loss
                 df.loc[index, 'mm_sl'] = df.loc[index, 'clt'] * df.loc[index, 'leverage'] * stop_loss_margin
-
-                # Check if the current position is liquidated
+                # E. Risk Triggers
+                    # Check if the current position is liquidated
                 df.loc[index, 'is_liq'] = df.loc[index, 'margin'] < df.loc[index,'mm']
-                # Check if the current position is stop loss
+                    # Check if the current position is stop loss
                 df.loc[index, 'is_sl'] = df.loc[index, 'margin'] < df.loc[index, 'mm_sl']
-
-                # Include fee if liquidation or stop loss occur
+                # F. Fees & Final P&L
+                    # Include fee if liquidation or stop loss occur
                 df.loc[index, 'fee'] = -fee * df.loc[index, 'leverage'] if df.loc[index, 'is_liq'] or df.loc[index, 'is_sl'] else 0
-                # Calculate final pnl
+                    # Calculate final pnl: Total return = (Current capital - Initial) + Funding profits
                 df.loc[index, 'final_pnl'] = df.loc[index, 'clt'] - 1 + df.loc[index, 'funding_pnl']
     return df
 
