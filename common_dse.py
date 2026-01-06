@@ -51,14 +51,14 @@ def get_backtest_result(input_df, l, fee = 0.001, maintenance_margin = 0.05, sto
 
     :param input_df: contains historical price and funding rate data
     :param l:        leverage ratio utilized (How many times your capital is being multiplied (e.g., 10x leverage))
-    :param fee: 
+    :param fee:      trading fee
     :param maintenance_margin: The minimum equity percentage required to keep a position open. 
                                 If equity falls below this, you get a margin call
     :param stop_loss_margin: A higher threshold than maintenance margin where a stop-loss triggers,
                                 acting as a safety buffer before liquidation
 
     Output: 
-        Calculates what would have happened (the PnL) if you traded this strategy in the past
+        Calculates what would have happened (the final PnL) if you traded this strategy in the past
 
     - This is a risk-averse simulation (assumes worst-case for change P&L)
     - Two-level risk management: Stop-loss (preventive) and Liquidation (forced)
