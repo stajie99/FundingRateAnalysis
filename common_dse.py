@@ -50,7 +50,7 @@ def get_backtest_result(input_df, l, fee = 0.001, maintenance_margin = 0.05, sto
     Simulates trades based on historical data points.
 
     :param input_df: contains historical price and funding rate data
-    :param l: 
+    :param l:        leverage ratio utilized (How many times your capital is being multiplied (e.g., 10x leverage))
     :param fee: 
     :param maintenance_margin: The minimum equity percentage required to keep a position open. 
                                 If equity falls below this, you get a margin call
@@ -58,7 +58,7 @@ def get_backtest_result(input_df, l, fee = 0.001, maintenance_margin = 0.05, sto
                                 acting as a safety buffer before liquidation
 
     Output: 
-        Calculates what would have happened if you traded this strategy in the past
+        Calculates what would have happened (the PnL) if you traded this strategy in the past
 
     - This is a risk-averse simulation (assumes worst-case for change P&L)
     - Two-level risk management: Stop-loss (preventive) and Liquidation (forced)
@@ -133,7 +133,7 @@ def get_backtest_result(input_df, l, fee = 0.001, maintenance_margin = 0.05, sto
                 df.loc[index, 'change'] = (price - df.loc[index, 'entry']) / df.loc[index, 'entry'] if df.loc[index, 'entry'] != 0 else 0
                     # Change pnl (we treat any changes as loss since we will either close the short position or long position if the price hits the stop loss)
                 df.loc[index, 'change_pnl'] = -abs(df.loc[index, 'change'] * df.loc[index, 'leverage'])
-                # C. Funding Payments : accounts for perpetual futures funding payments - Realistic simulation of holding costs
+                # C. Funding Payments : accounts for perpetual futures funding payments - Realistic simulation of holding costs/profits
                     # Funding payment comes from the funding rate and the position size (collateral + change pnl)
                 df.loc[index, 'funding'] = (df.loc[index, 'clt'] - df.loc[index, 'change'] / 2) * funding_rate * df.loc[index, 'leverage'] / 2
                     # Funding pnl is accumulated while there is no trading. If there is a trade, we reset the funding pnl and set it to the current funding payment
