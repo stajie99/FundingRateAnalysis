@@ -137,7 +137,7 @@ def get_backtest_result(input_df, l, fee = 0.001, maintenance_margin = 0.05, sto
                     # Change pnl (we treat any changes as loss since we will either close the short position or long position if the price hits the stop loss)
                 df.loc[index, 'change_pnl'] = -abs(df.loc[index, 'change'] * df.loc[index, 'leverage'])
                 # C. Funding Payments : accounts for perpetual futures funding payments - Realistic simulation of holding costs/profits
-                    # Funding payment comes from the funding rate and the position size (collateral + change pnl)
+                    # Funding payment comes from the funding rate and the position size (collateral + unrealized pnl)
                 df.loc[index, 'funding'] = (df.loc[index, 'clt'] - df.loc[index, 'change'] / 2) * funding_rate * df.loc[index, 'leverage'] / 2
                     # Funding pnl is accumulated while there is no trading. If there is a trade, we reset the funding pnl and set it to the current funding payment
                 df.loc[index, 'funding_pnl'] = df.loc[index, 'funding'] if traded else df.loc[index, 'funding'] + df.loc[index - 1, 'funding_pnl']
@@ -159,7 +159,7 @@ def get_backtest_result(input_df, l, fee = 0.001, maintenance_margin = 0.05, sto
                     # Include fee if liquidation or stop loss occur
                 df.loc[index, 'fee'] = -fee * df.loc[index, 'leverage'] if df.loc[index, 'is_liq'] or df.loc[index, 'is_sl'] else 0
                     # Calculate final pnl: Total return = (Current capital - Initial) + Funding profits
-                df.loc[index, 'final_pnl'] = df.loc[index, 'clt'] - 1 + df.loc[index, 'funding_pnl']
+                df.loc[index, 'final_pnl'] = df.loc[index, 'clt'] - 1 + df.loc[index, 'funding_pnl'] # realized pnl
     return df
 
 # Util functions for calculating pnl (long + short futures)
