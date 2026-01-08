@@ -63,7 +63,7 @@ def get_backtest_result(input_df, l, fee = 0.001, maintenance_margin = 0.05, sto
     - This is a risk-averse simulation (assumes worst-case for change P&L)
     - Two-level risk management: Stop-loss (preventive) and Liquidation (forced)
     - Funding rates matter: Can significantly impact P&L in perpetual contracts
-    - Fees only on exits: Assumes no trading fees except liquidation/stop-loss
+    - Assumes no trading fees except liquidation/stop-loss
     """
     
     df = input_df.copy()
@@ -76,7 +76,7 @@ def get_backtest_result(input_df, l, fee = 0.001, maintenance_margin = 0.05, sto
 
     for index, row in enumerate(df.iterrows()):
         #  Initialize first row (open position). Initialize all its columns
-        print(index)
+        # print(index)
         if index == 0:
             df['clt'] = float(1)  # The total starting capital (or equity, or collateral. unit: USDT) available in the account, normalized to 1)
             df['leverage'] = l    # Leverage Multiplier: How many times your capital is being multiplied (e.g., 10x leverage)
