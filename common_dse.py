@@ -49,16 +49,16 @@ def get_backtest_result(input_df, l, fee = 0.001, maintenance_margin = 0.05, sto
     """   
     Simulates trades based on historical data points.
 
-    :param input_df: contains historical price and funding rate data
+    :param input_df: DataFrame with 'close' and 'funding_rate' columns
     :param l:        leverage ratio utilized (How many times your capital is being multiplied (e.g., 10x leverage))
-    :param fee:      trading fee
+    :param fee:      trading fee (default 0.1%)
     :param maintenance_margin: The minimum equity percentage required to keep a position open. 
                                 If equity falls below this, you get a margin call
     :param stop_loss_margin: A higher threshold than maintenance margin where a stop-loss triggers,
                                 acting as a safety buffer before liquidation
 
     Output: 
-        Calculates what would have happened (the final PnL) if you traded this strategy in the past
+        DataFrame with backtest results -- Calculates what would have happened (the final PnL) if you traded this strategy in the past
 
     - This is a risk-averse simulation (assumes worst-case for change P&L)
     - Two-level risk management: Stop-loss (preventive) and Liquidation (forced)
@@ -68,33 +68,36 @@ def get_backtest_result(input_df, l, fee = 0.001, maintenance_margin = 0.05, sto
     
     df = input_df.copy()
     for index, row in enumerate(df.iterrows()):
+        #  Initialize first row (open position). Initialize all its columns
+        print(index)
         if index == 0:
-            df['clt'] = float(1)  # The total capital/equity available in the account, normalized to 1
+            df['clt'] = float(1)  # The total starting capital (or equity, or collateral. unit: USDT) available in the account, normalized to 1)
             df['leverage'] = l    # Leverage Multiplier: How many times your capital is being multiplied (e.g., 10x leverage)
                                   # Example: With $1000 capital and 10x leverage, you control $10,000 position
-            df['entry'] = float(0)
-            df['pos_size'] = float(0)
-            df['change'] = float(0)
-            df['change_pnl'] = float(0)
-            df['funding'] = float(0)
-            df['funding_pnl'] = float(0)
-            df['margin'] = float(0)
+            df['entry'] = float(0) # Entry price
+            df['pos_size'] = float(0) # Position size
+            df['change'] = float(0) # Price change since entry
+            df['change_pnl'] = float(0) # PnL from price change
+            df['funding'] = float(0) # Current period funding
+            df['funding_pnl'] = float(0) # Cumulative funding PnL
+            df['margin'] = float(0) # Current margin ratio
 
             # Below margin requirements calculation is to help traders understand their risk exposure for 
             # their trading positions, specifically in the context of leveraged trading (like futures or margin trading).
             # 1. Minimum equity needed to avoid liquidation
-            df['mm'] = df['clt'] * df['leverage'] * maintenance_margin 
+            df['mm'] = df['clt'] * df['leverage'] * maintenance_margin  # Maintenance margin requirement
             # 2. Equity level where stop-loss triggers
-            df['mm_sl'] = df['clt'] * df['leverage'] * stop_loss_margin  
-                                                                          
-            df['is_sl'] = False
+            df['mm_sl'] = df['clt'] * df['leverage'] * stop_loss_margin  # Stop-loss margin requirement
 
-            df['fee'] = -fee * df['leverage']
+            df['is_liq'] = False # Liquidation flag                                               
+            df['is_sl'] = False # Stop-loss flag
+
+            df['fee'] = -fee * df['leverage'] # Pay trading fee to open position
             df['final_pnl'] = float(0)
-        else:
+        else: # update row 2, 3, ...
             ### Below is a trading simulation/backtesting logic (a leveraged trading strategy) that tracks 
             # positions, margin requirements, and calculates P&L
-            prev_df = df.loc[index - 1]
+            prev_df = df.loc[index - 1] # Get previous row as Series. Label-based indexing
             # check if is there was a trade in the previous record
             traded = prev_df['fee'] != 0
 
@@ -126,7 +129,7 @@ def get_backtest_result(input_df, l, fee = 0.001, maintenance_margin = 0.05, sto
                 # A. Position Entry & Size simulating. Simulates how much you would have traded at each point
                     # Entry price of the current position: Resets on trade, otherwise carries forward
                 df.loc[index, 'entry'] = price if traded else prev_df['entry']
-                    # Size of the current position: Current notional value = Price × Capital × Leverage
+                    # Size of the current position: Current notional value = Price × Collateral(unit: USDT) × Leverage
                 df.loc[index, 'pos_size'] = price * df.loc[index, 'clt'] * df.loc[index, 'leverage']
                 # B. Price Change P&L
                     # Change (%) of the current position (compared to entry price)
