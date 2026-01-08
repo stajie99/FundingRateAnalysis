@@ -67,6 +67,13 @@ def get_backtest_result(input_df, l, fee = 0.001, maintenance_margin = 0.05, sto
     """
     
     df = input_df.copy()
+    # # Using exact datetime string
+    # target_datetime = '2024-01-01 00:00:00'
+    # df.loc[df['datetime'] == target_datetime, 'funding_rate'] = 0.4
+
+    # target_datetime = '2024-01-01 00:08:00'
+    # df.loc[df['datetime'] == target_datetime, 'funding_rate'] = -0.9
+
     for index, row in enumerate(df.iterrows()):
         #  Initialize first row (open position). Initialize all its columns
         print(index)
